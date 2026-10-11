@@ -5,6 +5,7 @@ Run with PyYAML installed: python tests/validate_workflows.py
 from pathlib import Path
 import re
 import subprocess
+import os
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,8 +26,15 @@ parent, _ = load(WF / 'build-test_6.6_kpm.yml')
 dispatch = parent['on']['workflow_dispatch']['inputs']
 assert dispatch['ksu_type']['default'] == 'bakasu', 'obsolete default KSU branch'
 assert 'bakasu' in dispatch['ksu_type']['options']
-assert set(parent['jobs']) == set(VERSIONS) | {'release'}
-assert set(parent['jobs']['release']['needs']) == set(VERSIONS)
+assert dispatch['susfs_enable']['default'] == 'false', 'BakaSU currently forbids SUSFS builds'
+assert set(parent['jobs']) == set(VERSIONS) | {'prepare', 'release'}
+assert set(parent['jobs']['release']['needs']) == set(VERSIONS) | {'prepare'}
+guard = next(s for s in parent['jobs']['prepare']['steps'] if s.get('id') == 'compat')
+for enabled, expected in [('false', 0), ('true', 1)]:
+    result = subprocess.run([str(BASH), '-s'], input=guard['run'], text=True,
+                            encoding='utf-8', capture_output=True,
+                            env={**os.environ, 'SUSFS_ENABLE': enabled})
+    assert result.returncode == expected, (enabled, result.stderr)
 assert parent['jobs']['release']['permissions']['contents'] == 'write'
 files = [(WF / 'build-test_6.6_kpm.yml', parent)]
 names = []
@@ -36,13 +44,16 @@ for job, version in VERSIONS.items():
     assert path.name == f'fastbuild_6.6.{version}.yml'
     child, text = load(path)
     interface = child['on']['workflow_call']
-    assert set(call['with']) == set(interface['inputs']) == set(dispatch)
+    assert set(call['with']) == set(interface['inputs']) == set(dispatch) | {'ksu_ref'}
+    assert call['needs'] == 'prepare'
+    assert interface['inputs']['ksu_ref']['type'] == 'string'
+    assert child['on']['workflow_dispatch']['inputs']['susfs_enable']['default'] == 'false'
     for name, value in dispatch.items():
         kind = 'string' if value['type'] == 'choice' else value['type']
         assert interface['inputs'][name]['type'] == kind, (version, name)
         assert call['with'][name] == '${{ inputs.' + name + ' }}'
-    assert set(interface['outputs']) >= {'ksuver', 'ak3name'}
-    for output in ('ksuver', 'ak3name'):
+    assert set(interface['outputs']) >= {'ksuver', 'ak3name', 'ksu_sha'}
+    for output in ('ksuver', 'ak3name', 'ksu_sha'):
         assert interface['outputs'][output]['value'] == '${{ jobs.build.outputs.' + output + ' }}'
         assert output in child['jobs']['build']['outputs']
     assert child['env']['SUB_VERSION'] == version

@@ -23,10 +23,10 @@ on:
           - 'ksu'
           - 'none'
       susfs_enable:
-        description: '是否开启 susfs'
+        description: '是否开启 susfs（当前 BakaSU 上游禁止开启，请保持关闭）'
         required: true
         type: boolean
-        default: true
+        default: false
       kpm_enable:
         description: '是否开启 KPM'
         required: true
@@ -102,10 +102,48 @@ permissions:
   packages: write
 
 jobs:
+  prepare:
+    name: 核对最新 BakaSU 源码与官方管理器
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      ksu_ref: ${{ steps.source.outputs.ksu_ref }}
+      manager_run_id: ${{ steps.source.outputs.manager_run_id }}
+    steps:
+      - name: 检查 BakaSU 与 SUSFS 兼容性
+        id: compat
+        if: inputs.ksu_type == 'bakasu'
+        env:
+          SUSFS_ENABLE: ${{ inputs.susfs_enable }}
+        run: |
+          if [[ "$SUSFS_ENABLE" != "false" ]]; then
+            echo "::error::当前 BakaSU 主动禁止 SUSFS 构建，请关闭 susfs_enable。不要删除上游保护检查。"
+            exit 1
+          fi
+      - name: 记录本次最新 main SHA 并查询同提交官方管理器
+        id: source
+        if: inputs.ksu_type == 'bakasu'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          KSU_SHA="$(gh api repos/Baka-SU/BakaSU/git/ref/heads/main --jq '.object.sha')"
+          [[ "$KSU_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          echo "ksu_ref=$KSU_SHA" >> "$GITHUB_OUTPUT"
+          echo "BakaSU 本次最新源码：$KSU_SHA"
+          MANAGER_RUN_ID="$(gh api "repos/Baka-SU/BakaSU/actions/workflows/build-manager.yml/runs?branch=main&event=push&head_sha=$KSU_SHA&status=success&per_page=5" --jq '.workflow_runs[0].id // empty')"
+          echo "manager_run_id=$MANAGER_RUN_ID" >> "$GITHUB_OUTPUT"
+          if [[ -z "$MANAGER_RUN_ID" ]]; then
+            echo "::warning::此提交的官方管理器尚未构建成功，Release 将保留官方 Actions 下载链接，不附带旧 APK。"
+          fi
+
   build_30:
+    needs: prepare
     name: 构建 6.6.30
     uses: ./.github/workflows/fastbuild_6.6.30.yml
     with:
+      ksu_ref: ${{ needs.prepare.outputs.ksu_ref || 'main' }}
       ksu_type: ${{ inputs.ksu_type }}
       susfs_enable: ${{ inputs.susfs_enable }}
       kpm_enable: ${{ inputs.kpm_enable }}
@@ -121,9 +159,11 @@ jobs:
       ccache_debug: ${{ inputs.ccache_debug }}
       kernel_suffix: ${{ inputs.kernel_suffix }}
   build_50:
+    needs: prepare
     name: 构建 6.6.50
     uses: ./.github/workflows/fastbuild_6.6.50.yml
     with:
+      ksu_ref: ${{ needs.prepare.outputs.ksu_ref || 'main' }}
       ksu_type: ${{ inputs.ksu_type }}
       susfs_enable: ${{ inputs.susfs_enable }}
       kpm_enable: ${{ inputs.kpm_enable }}
@@ -139,9 +179,11 @@ jobs:
       ccache_debug: ${{ inputs.ccache_debug }}
       kernel_suffix: ${{ inputs.kernel_suffix }}
   build_56:
+    needs: prepare
     name: 构建 6.6.56
     uses: ./.github/workflows/fastbuild_6.6.56.yml
     with:
+      ksu_ref: ${{ needs.prepare.outputs.ksu_ref || 'main' }}
       ksu_type: ${{ inputs.ksu_type }}
       susfs_enable: ${{ inputs.susfs_enable }}
       kpm_enable: ${{ inputs.kpm_enable }}
@@ -157,9 +199,11 @@ jobs:
       ccache_debug: ${{ inputs.ccache_debug }}
       kernel_suffix: ${{ inputs.kernel_suffix }}
   build_57:
+    needs: prepare
     name: 构建 6.6.57
     uses: ./.github/workflows/fastbuild_6.6.57.yml
     with:
+      ksu_ref: ${{ needs.prepare.outputs.ksu_ref || 'main' }}
       ksu_type: ${{ inputs.ksu_type }}
       susfs_enable: ${{ inputs.susfs_enable }}
       kpm_enable: ${{ inputs.kpm_enable }}
@@ -175,9 +219,11 @@ jobs:
       ccache_debug: ${{ inputs.ccache_debug }}
       kernel_suffix: ${{ inputs.kernel_suffix }}
   build_66:
+    needs: prepare
     name: 构建 6.6.66
     uses: ./.github/workflows/fastbuild_6.6.66.yml
     with:
+      ksu_ref: ${{ needs.prepare.outputs.ksu_ref || 'main' }}
       ksu_type: ${{ inputs.ksu_type }}
       susfs_enable: ${{ inputs.susfs_enable }}
       kpm_enable: ${{ inputs.kpm_enable }}
@@ -193,9 +239,11 @@ jobs:
       ccache_debug: ${{ inputs.ccache_debug }}
       kernel_suffix: ${{ inputs.kernel_suffix }}
   build_89:
+    needs: prepare
     name: 构建 6.6.89
     uses: ./.github/workflows/fastbuild_6.6.89.yml
     with:
+      ksu_ref: ${{ needs.prepare.outputs.ksu_ref || 'main' }}
       ksu_type: ${{ inputs.ksu_type }}
       susfs_enable: ${{ inputs.susfs_enable }}
       kpm_enable: ${{ inputs.kpm_enable }}
@@ -211,9 +259,11 @@ jobs:
       ccache_debug: ${{ inputs.ccache_debug }}
       kernel_suffix: ${{ inputs.kernel_suffix }}
   build_89_mtk:
+    needs: prepare
     name: 构建 6.6.89 MTK
     uses: ./.github/workflows/fastbuild_6.6.89_mtk.yml
     with:
+      ksu_ref: ${{ needs.prepare.outputs.ksu_ref || 'main' }}
       ksu_type: ${{ inputs.ksu_type }}
       susfs_enable: ${{ inputs.susfs_enable }}
       kpm_enable: ${{ inputs.kpm_enable }}
@@ -233,6 +283,7 @@ jobs:
     name: 汇总七个版本并发布
     if: ${{ needs.build_30.result == 'success' && needs.build_50.result == 'success' && needs.build_56.result == 'success' && needs.build_57.result == 'success' && needs.build_66.result == 'success' && needs.build_89.result == 'success' && needs.build_89_mtk.result == 'success' }}
     needs:
+      - prepare
       - build_30
       - build_50
       - build_56
@@ -253,6 +304,10 @@ jobs:
           merge-multiple: true
           skip-decompress: true
       - name: 校验七个 ZIP 工件
+        env:
+          KSU_TYPE: ${{ inputs.ksu_type }}
+          KSU_SHA: ${{ needs.prepare.outputs.ksu_ref }}
+          BUILT_SHAS: ${{ needs.build_30.outputs.ksu_sha }} ${{ needs.build_50.outputs.ksu_sha }} ${{ needs.build_56.outputs.ksu_sha }} ${{ needs.build_57.outputs.ksu_sha }} ${{ needs.build_66.outputs.ksu_sha }} ${{ needs.build_89.outputs.ksu_sha }} ${{ needs.build_89_mtk.outputs.ksu_sha }}
         shell: bash
         run: |
           shopt -s nullglob
@@ -263,11 +318,30 @@ jobs:
             exit 1
           fi
           printf '已找到：%s\n' "${zips[@]}"
+          if [[ "$KSU_TYPE" == "bakasu" ]]; then
+            read -r -a built_shas <<< "$BUILT_SHAS"
+            [[ "${#built_shas[@]}" -eq 7 ]] || exit 1
+            for sha in "${built_shas[@]}"; do
+              [[ "$sha" == "$KSU_SHA" ]] || { echo "BakaSU 源码 SHA 不一致" >&2; exit 1; }
+            done
+          fi
+      - name: 下载同提交的官方 BakaSU 管理器
+        if: inputs.ksu_type == 'bakasu' && needs.prepare.outputs.manager_run_id != ''
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          repository: Baka-SU/BakaSU
+          run-id: ${{ needs.prepare.outputs.manager_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          name: Manager-release
+          path: ./bakasu_manager
       - name: 创建统一 Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           KSU_TYPE: ${{ inputs.ksu_type }}
           KSUVER: ${{ needs.build_30.outputs.ksuver }}
+          KSU_SHA: ${{ needs.prepare.outputs.ksu_ref }}
+          MANAGER_RUN_ID: ${{ needs.prepare.outputs.manager_run_id }}
           SUSFS_ENABLE: ${{ inputs.susfs_enable }}
           KPM_ENABLE: ${{ inputs.kpm_enable }}
           LZ4_ENABLE: ${{ inputs.lz4_enable }}
@@ -291,13 +365,6 @@ jobs:
           case "$KSU_TYPE" in
             bakasu)
               KSU_TYPENAME="BakaSU"
-              MANAGER_REPO="cctv18/BakaSU_CI"
-              # 上游已更名，但新 CI Release 尚未上线时沿用可用的管理器仓库。
-              if ! gh api "repos/$MANAGER_REPO/releases/latest" --silent 2>/dev/null; then
-                echo "::warning::BakaSU_CI Release 暂不可用，使用 ReSukiSU_CI 管理器"
-                MANAGER_REPO="cctv18/ReSukiSU_CI"
-              fi
-              MANAGER_ASSET_FILTER='startswith("BakaSU_") and endswith("-arm64-v8a-release.apk")'
               ;;
             sukisu)
               KSU_TYPENAME="SukiSU Ultra"
@@ -319,6 +386,23 @@ jobs:
               ;;
           esac
           MANAGER_ASSET_NAME="未附带"
+          MANAGER_SOURCE="上游 Release"
+          SOURCE_NOTE="使用所选分支的当前源码"
+          if [[ "$KSU_TYPE" == "bakasu" ]]; then
+            SOURCE_NOTE="[本次最新 BakaSU main 提交 ${KSU_SHA}](https://github.com/Baka-SU/BakaSU/commit/${KSU_SHA})；SUSFS 按上游规则关闭"
+            MANAGER_SOURCE="https://github.com/Baka-SU/BakaSU/actions/workflows/build-manager.yml"
+            if [[ -n "$MANAGER_RUN_ID" ]]; then
+              MANAGER_SOURCE="https://github.com/Baka-SU/BakaSU/actions/runs/${MANAGER_RUN_ID}"
+            fi
+            shopt -s nullglob
+            manager_apks=(bakasu_manager/BakaSU_*-arm64-v8a-release.apk)
+            if [[ "${#manager_apks[@]}" -eq 1 ]]; then
+              MANAGER_ASSET_NAME="$(basename "${manager_apks[0]}")"
+              cp "${manager_apks[0]}" "release_zips/$MANAGER_ASSET_NAME"
+            else
+              echo "::warning::未获得同提交的官方 BakaSU APK，不附带旧 ReSukiSU 或其他签名的管理器。请从 $MANAGER_SOURCE 下载。"
+            fi
+          fi
           if [[ -n "$MANAGER_REPO" ]]; then
             MANAGER_ASSET_LINE="$(gh api "repos/$MANAGER_REPO/releases/latest" --jq ".assets[] | select(.name | $MANAGER_ASSET_FILTER) | [.name, .browser_download_url] | @tsv" | head -n 1)"
             if [[ -z "$MANAGER_ASSET_LINE" ]]; then
@@ -334,6 +418,7 @@ jobs:
           - 编译时间：${TIME_FORM}
           - 机型：欧加真骁龙 8 Elite / 天玑特供 6.6.X 内核
           - KSU分支：${KSU_TYPENAME}
+          - KSU源码：${SOURCE_NOTE}
           - susfs支持：${SUSFS_ENABLE}
           - KPM支持：${KPM_ENABLE}
           - LZ4支持：${LZ4_ENABLE}
@@ -359,11 +444,12 @@ jobs:
           | 6.6.89 | 欧加真骁龙 8 Elite 通用 6.6.89 内核，基于一加 13 官方 OKI 源码 | [sm8750_v_16.0.0_oneplus_13_6.6.89](https://github.com/cctv18/android_kernel_common_oneplus_sm8750/tree/oneplus/sm8750_v_16.0.0_oneplus_13_6.6.89) |
           | 6.6.89_mtk | 欧加真天玑特供 6.6.89 内核，基于一加 Ace5 Ultra 官方 OKI 源码 | [mt6991_v_15.0.2_ace5_ultra_6.6.89](https://github.com/cctv18/android_kernel_oneplus_mt6991/tree/oneplus/mt6991_v_15.0.2_ace5_ultra_6.6.89) |
 
-          - BakaSU管理器下载：[BakaSU_CI](https://github.com/cctv18/BakaSU_CI/releases)（迁移期间备用：[ReSukiSU_CI](https://github.com/cctv18/ReSukiSU_CI/releases)）
+          - BakaSU管理器下载：[官方 Build Manager](https://github.com/Baka-SU/BakaSU/actions/workflows/build-manager.yml)（选择 main 分支成功运行的 Manager-release，勿使用 PR/DEV/Spoofed 变体）
           - SukiSU Ultra管理器下载：[SukiSU-Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases)
           - KernelSU Next管理器下载：[KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next/releases)
           - KSU原版管理器下载：[KernelSU](https://github.com/tiann/KernelSU/releases)
           - 本次构建对应管理器 APK：${MANAGER_ASSET_NAME}
+          - 管理器来源：${MANAGER_SOURCE}
 
           ### ⏫️ 更新内容：
           - 更新${KSU_TYPENAME}至最新版本（${KSUVER}）

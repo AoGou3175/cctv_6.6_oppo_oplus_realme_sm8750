@@ -66,3 +66,27 @@
 - 验证：修改前实测旧 CI 仅提供旧管理器；修改后实际运行工作流资产筛选，结果为空，正确拒绝不兼容 APK；源文件 git diff --check 通过。首次结果快照保留源文件原有空白，单独用 SHA-256 验证 20 个快照字节一致，不清理上游无关格式。
 - 当前需要用户选择：保留 SUSFS 并固定 10 月 4 日兼容源码（缺少后续更新）、最新 BakaSU 关闭 SUSFS并另配新版管理器，或等待 SUSFS 适配。未擅自改变 susfs 功能、删除上游保护或回退源码。
 - GitHub 备份状态：同步代码和首次快照已上传；本条构建失败记录、管理器安全检查和新快照随后提交推送 main。尚无本轮成功构建，不声明任务构建成功。
+
+
+## 2026-10-11 20:12:43 遵循最新 BakaSU 规则重新构建
+
+- 用户明确选择最新 BakaSU 规则：关闭 SUSFS，不回退源码，不删除 susfs_compat.mk 保护；KPM 和其他参数仍沿用上次实际运行（KPM false、LZ4 true、后缀 AoGou）。
+- 修改八个工作流：父入口和七个子入口默认关闭 SUSFS，七个子流程采用 KSU_TRACEPOINT_HOOK；保留 89_mtk、14 个原有用户参数和唯一 ZIP 名称。
+- 批量 prepare 记录运行开始时最新 BakaSU main SHA，内部传递 ksu_ref，七版本 checkout 后检查实际 SHA，版本号按 HEAD 计算；汇总校验七份源码 SHA 相同并在 Release 写明来源。
+- 官方管理器来自 Baka-SU/BakaSU 的 Build Manager，筛选 main、push、success、同源码 SHA 的 Manager-release 工件。跨仓库下载无权限时仅保留官方来源链接，不用旧/PR/DEV/Spoofed APK；本次若需要，由已授权 gh 登录补齐同提交官方 APK。
+- 目前源码 SHA 59afa46b325126b12a48234063cd0c2a6b735b57，官方运行 38134360191；APK BakaSU_v4.2.0-rc3_35226-arm64-v8a-release.apk，大小 9687368，SHA-256 14e03f3bb727352234bceeb9fa72087932e8792f92e7ba6e8de9ee52b222350d。
+- 更正前条管理器推断：aapt2 实测此官方新版 APK 包名仍为 com.resukisu.resukisu，显示名 BakaSU；apksigner 验证 v2 签名有效，证书 SHA-256 d3469712b6214462764a1d8d3e5cbe1d6819a0b629791b9f4101867821f1df64 与同提交 manager_sign.h 完全一致。不能仅依据重命名提交推断实际包名或签名兼容性。
+- 验证：修改前校验按预期发现默认启用 SUSFS；修改后错误参数返回 1、关闭 SUSFS 返回 0；七版本输入/输出/源码接口、165 段 Bash 语法通过；源码解析及官方同提交运行查询实测通过；git diff --check 和敏感信息模式扫描通过。快照保留源文件已有空白，按 SHA-256 验证一致。
+- AGENTS.md 已更新本轮长期规则，tests/validate_workflows.py 补充参数拒绝和内部接口验证。
+- 本地结果快照完整路径：
+- D:/Codex/构建GKI/CCTV6.6/versions/build-test_6.6_kpm-20261011-201243-bakasu-latest.yml
+- D:/Codex/构建GKI/CCTV6.6/versions/fastbuild_6.6.30-20261011-201243-bakasu-latest.yml
+- D:/Codex/构建GKI/CCTV6.6/versions/fastbuild_6.6.50-20261011-201243-bakasu-latest.yml
+- D:/Codex/构建GKI/CCTV6.6/versions/fastbuild_6.6.56-20261011-201243-bakasu-latest.yml
+- D:/Codex/构建GKI/CCTV6.6/versions/fastbuild_6.6.57-20261011-201243-bakasu-latest.yml
+- D:/Codex/构建GKI/CCTV6.6/versions/fastbuild_6.6.66-20261011-201243-bakasu-latest.yml
+- D:/Codex/构建GKI/CCTV6.6/versions/fastbuild_6.6.89-20261011-201243-bakasu-latest.yml
+- D:/Codex/构建GKI/CCTV6.6/versions/fastbuild_6.6.89_mtk-20261011-201243-bakasu-latest.yml
+- D:/Codex/构建GKI/CCTV6.6/versions/AGENTS-20261011-201243-bakasu-latest.md
+- D:/Codex/构建GKI/CCTV6.6/versions/validate_workflows-20261011-201243-bakasu-latest.py
+- 同名快照也保存在 Git 仓库根目录 repo/versions/，本条与代码随提交上传 main；本轮真实 Actions 和 Release 结果待完成后追加，不提前声称构建通过。

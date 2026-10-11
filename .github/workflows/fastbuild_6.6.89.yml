@@ -23,10 +23,10 @@ on:
           - 'ksu'
           - 'none'
       susfs_enable:
-        description: '是否开启susfs(用于增强隐藏环境挂载功能; 可能轻微增加耗电，上游更新导致不稳定时或不需要可关闭)'
+        description: '是否开启susfs（当前 BakaSU 上游禁止开启，请保持关闭）'
         required: true
         type: boolean
-        default: 'true'
+        default: 'false'
       kpm_enable:
         description: '是否开启kpm(使用KpatchNext独立实现kpm(支持任意KSU/面具环境); 不需要可保持默认关闭)'
         required: true
@@ -98,6 +98,11 @@ on:
 
   workflow_call:
     inputs:
+      ksu_ref:
+        description: 本次 BakaSU 源码 SHA，手动运行默认使用最新 main
+        required: false
+        type: string
+        default: main
       ksu_type:
         required: true
         type: string
@@ -147,12 +152,16 @@ on:
       ak3name:
         description: AnyKernel3 artifact name
         value: ${{ jobs.build.outputs.ak3name }}
+      ksu_sha:
+        description: Actual KernelSU source commit
+        value: ${{ jobs.build.outputs.ksu_sha }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
       ksuver: ${{ steps.ksu_version.outputs.ksuver }}
+      ksu_sha: ${{ steps.ksu_version.outputs.ksu_sha }}
       ak3name: ${{ steps.create_zip.outputs.ak3name }}
     permissions:
       actions: write
@@ -299,16 +308,29 @@ jobs:
 
       - name: 添加KernelSU
         id: ksu_version
+        env:
+          KSU_REF: ${{ inputs.ksu_ref || 'main' }}
         run: |
           # 进入内核工作目录
           cd kernel_workspace
           if [[ ${{ inputs.ksu_type }} == "sukisu" || ${{ inputs.ksu_type }} == "bakasu" ]]; then
-            echo "正在配置BakaSU（由于SukiSU长期未维护无法正常编译，且BakaSU兼容sukisu管理器，故SukiSU源码仓库已重定向为bakasu）..."
-            curl -LSs "https://raw.githubusercontent.com/Baka-SU/BakaSU/refs/heads/main/kernel/setup.sh" | bash -s main
+            if [[ "${{ inputs.susfs_enable }}" == "true" ]]; then
+              echo "::error::当前 BakaSU 禁止 SUSFS 构建，请关闭 susfs_enable。"
+              exit 1
+            fi
+            echo "正在配置BakaSU，请使用官方新版 BakaSU 管理器..."
+            curl -fLSs "https://raw.githubusercontent.com/Baka-SU/BakaSU/refs/heads/main/kernel/setup.sh" | bash -s "$KSU_REF"
             echo 'CONFIG_KSU_FULL_NAME_FORMAT="%TAG_NAME%-%COMMIT_SHA%@cctv18"' >> ./common/arch/arm64/configs/gki_defconfig
             cd ./KernelSU
+            KSU_SHA=$(git rev-parse HEAD)
+            if [[ "$KSU_REF" != "main" && "$KSU_SHA" != "$KSU_REF" ]]; then
+              echo "::error::BakaSU checkout 未切换到指定 SHA"
+              exit 1
+            fi
+            echo "ksu_sha=$KSU_SHA" >> "$GITHUB_OUTPUT"
+            echo "BakaSU 实际源码 SHA：$KSU_SHA"
             # 生成自定义版本号（基于提交计数）, 失败时使用 114514
-            KSU_VERSION=$(expr $(git rev-list --count main) + 30700 2>/dev/null || echo 114514)
+            KSU_VERSION=$(expr $(git rev-list --count HEAD) + 30700 2>/dev/null || echo 114514)
             # 存储版本号到 GitHub 环境变量
             echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
             echo "ksuver=$KSU_VERSION" >> $GITHUB_OUTPUT
@@ -418,6 +440,9 @@ jobs:
           echo "CONFIG_KSU=y" >> ./common/arch/arm64/configs/gki_defconfig
           if [[ "${{ inputs.susfs_enable }}" == "false" ]]; then
             echo "CONFIG_KSU_SUSFS=n" >> ./common/arch/arm64/configs/gki_defconfig
+            if [[ "${{ inputs.ksu_type }}" == "bakasu" || "${{ inputs.ksu_type }}" == "sukisu" ]]; then
+              echo "CONFIG_KSU_TRACEPOINT_HOOK=y" >> ./common/arch/arm64/configs/gki_defconfig
+            fi
           fi
           #添加对 Mountify (backslashxx/mountify) 模块的支持
           echo "CONFIG_TMPFS_XATTR=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -858,7 +883,7 @@ jobs:
           - ADIOS IO调度器支持：${{ inputs.adios_enable }}
           - Re-Kernel支持：${{ inputs.rekernel_enable }}
           - 内核级基带保护支持：${{ inputs.baseband_guard }}
-          - BakaSU管理器下载：[BakaSU_CI](https://github.com/cctv18/BakaSU_CI/releases)（迁移期间备用：[ReSukiSU_CI](https://github.com/cctv18/ReSukiSU_CI/releases)）
+          - BakaSU管理器下载：[官方 Build Manager](https://github.com/Baka-SU/BakaSU/actions/workflows/build-manager.yml)（选择 main 分支成功运行的 Manager-release）
           - SukiSU Ultra管理器下载：[SukiSU-Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases)
           - KernelSU Next管理器下载：[KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next/releases)
           - KSU原版管理器下载：[KernelSU](https://github.com/tiann/KernelSU/releases)
