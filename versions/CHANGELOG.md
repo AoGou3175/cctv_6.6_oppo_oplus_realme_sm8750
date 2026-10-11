@@ -90,3 +90,18 @@
 - D:/Codex/构建GKI/CCTV6.6/versions/AGENTS-20261011-201243-bakasu-latest.md
 - D:/Codex/构建GKI/CCTV6.6/versions/validate_workflows-20261011-201243-bakasu-latest.py
 - 同名快照也保存在 Git 仓库根目录 repo/versions/，本条与代码随提交上传 main；本轮真实 Actions 和 Release 结果待完成后追加，不提前声称构建通过。
+
+
+## 2026-10-11 20:25:00 最新 BakaSU 七版本构建与发布验证完成
+
+- 构建代码提交：49ccdd75374de3a2271b47a8cc2d848f1b4d3257，main 已推送并核对 GitHub 回读。
+- 真实运行：https://github.com/AoGou3175/cctv_6.6_oppo_oplus_realme_sm8750/actions/runs/38138527278；16 个 job 全部 success，包括准备、七个 build、七个子 Release 和统一发布。
+- 统一 Release：https://github.com/AoGou3175/cctv_6.6_oppo_oplus_realme_sm8750/releases/tag/OPPO-OPlus-Realme-build-all-261011202212-38138527278；7 个唯一命名 ZIP（30、50、56、57、66、89、89_mtk）和 1 个官方 arm64 管理器 APK，未漏传 MTK。
+- 汇总日志验证七份 KSU SHA 全部为 59afa46b325126b12a48234063cd0c2a6b735b57；BakaSU 35226，SUSFS false、KPM false、LZ4 true、后缀 AoGou。
+- 本次跨仓库 GITHUB_TOKEN 实际下载 Manager-release 成功，官方管理器自动随统一 Release 上传，不需要人工补传。前述 gh 补传仅是权限失败时的备用方法。
+- 从 Release 下载到 D:/Personal/Temp/gki-final-38138527278，七 ZIP CRC 全部通过，含 Image、anykernel.sh、tools/ak3-core.sh；Image ARM64 魔数有效（大小约 36.6–37.6 MB），ZIP 注释包含本轮 Run ID、代码提交、35226 及功能开关。
+- 8 个资产的本地大小和 SHA-256 全部与 GitHub API digest 一致；APK 与同源码官方工件一致（14e03f3bb727352234bceeb9fa72087932e8792f92e7ba6e8de9ee52b222350d），apksigner 签名验证通过，证书与 manager_sign.h 一致。
+- 检查脚本最初误假设 APK 原生库名 libksu.so，实际官方 APK 使用 libkernelsu.so 和 libksud.so；根据真实内容修正临时检查后通过，未改动交付 APK。不能凭经验硬编码不确定的文件名来判定资产损坏。
+- 最终静态检查：七版本接口和唯一命名、165 段 Bash 语法通过，git diff --check 通过；Release 中文、标签、源码及资产回读正常。
+- 本轮工作流、测试、AGENTS.md 和 10 个结果快照已上传提交 49ccdd7；快照路径见上一条记录。本条仅补充验证结果，不对 CHANGELOG 自身生成递归快照；仓库内记录随后正常提交推送 main，本地外层记录同步保留。
+- 未进行手机刷写、开机或 Root/模块实机验证；未发现新的工作流构建故障，没有修改设备分区、仓库可见性或 fork 关系。
