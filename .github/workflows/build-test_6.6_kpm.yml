@@ -1,7 +1,7 @@
 # 6.6 批量 KPM 构建入口。
 #
 # 这些 fastbuild 工作流需要在远程仓库中声明 workflow_call 后，才能被本文件复用。
-# 当前仅新增本批量入口，不修改现有单版本 fastbuild 工作流。
+# 保留独立版本与唯一工件名，并与上游 KernelSU 分支同步。
 
 name: build-test_6.6_kpm
 
@@ -15,9 +15,9 @@ on:
         description: 'KernelSU 分支'
         required: true
         type: choice
-        default: 'resukisu'
+        default: 'bakasu'
         options:
-          - 'resukisu'
+          - 'bakasu'
           - 'sukisu'
           - 'ksunext'
           - 'ksu'
@@ -289,9 +289,14 @@ jobs:
           MANAGER_REPO=""
           MANAGER_ASSET_FILTER=""
           case "$KSU_TYPE" in
-            resukisu)
-              KSU_TYPENAME="ReSukiSU"
-              MANAGER_REPO="cctv18/ReSukiSU_CI"
+            bakasu)
+              KSU_TYPENAME="BakaSU"
+              MANAGER_REPO="cctv18/BakaSU_CI"
+              # 上游已更名，但新 CI Release 尚未上线时沿用可用的管理器仓库。
+              if ! gh api "repos/$MANAGER_REPO/releases/latest" --silent 2>/dev/null; then
+                echo "::warning::BakaSU_CI Release 暂不可用，使用 ReSukiSU_CI 管理器"
+                MANAGER_REPO="cctv18/ReSukiSU_CI"
+              fi
               MANAGER_ASSET_FILTER='endswith("-arm64-v8a-release.apk")'
               ;;
             sukisu)
@@ -354,7 +359,7 @@ jobs:
           | 6.6.89 | 欧加真骁龙 8 Elite 通用 6.6.89 内核，基于一加 13 官方 OKI 源码 | [sm8750_v_16.0.0_oneplus_13_6.6.89](https://github.com/cctv18/android_kernel_common_oneplus_sm8750/tree/oneplus/sm8750_v_16.0.0_oneplus_13_6.6.89) |
           | 6.6.89_mtk | 欧加真天玑特供 6.6.89 内核，基于一加 Ace5 Ultra 官方 OKI 源码 | [mt6991_v_15.0.2_ace5_ultra_6.6.89](https://github.com/cctv18/android_kernel_oneplus_mt6991/tree/oneplus/mt6991_v_15.0.2_ace5_ultra_6.6.89) |
 
-          - ReSukiSU管理器下载：[ReSukiSU_CI](https://github.com/cctv18/ReSukiSU_CI/releases)
+          - BakaSU管理器下载：[BakaSU_CI](https://github.com/cctv18/BakaSU_CI/releases)（迁移期间备用：[ReSukiSU_CI](https://github.com/cctv18/ReSukiSU_CI/releases)）
           - SukiSU Ultra管理器下载：[SukiSU-Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases)
           - KernelSU Next管理器下载：[KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next/releases)
           - KSU原版管理器下载：[KernelSU](https://github.com/tiann/KernelSU/releases)
@@ -370,7 +375,7 @@ jobs:
           3. 若你之前已刷入 SukiSU Ultra 内核，且 SukiSU Ultra 管理器已更新至最新版本，可在 SukiSU Ultra 管理器中直接刷入 AnyKernel 刷机包并重启；
           4. 刷入无 LZ4KD 补丁版的内核前若刷入过 LZ4KD 补丁版的内核，为避免出错，请先关闭 zram 模块；
           5. 由于 KernelSU 上游更新了元模块功能，最新版 KSU 管理器需要配合元模块（metamodule）才能正常挂载模块。可使用 [meta overlayfs](https://github.com/KernelSU-Modules-Repo/meta-overlayfs)、[mountify](https://github.com/backslashxx/mountify) 等元模块；
-          6. KernelPatch Next（即 KPN）是一个独立于 KSU 的 KPM 实现，可以运行在任意 KSU/面具环境中（不适用于 Apatch），且不能与 ReSukiSU 内置的 KPM 实现共同使用。
+          6. KernelPatch Next（即 KPN）是一个独立于 KSU 的 KPM 实现，可以运行在任意 KSU/面具环境中（不适用于 Apatch），且不能与 BakaSU/ReSukiSU 内置的 KPM 实现共同使用。
 
           #### ※※※刷写内核有风险，为防止出现意外导致手机变砖，在刷入内核前请务必用 [KernelFlasher](https://github.com/capntrips/KernelFlasher) 等软件备份 boot 等关键启动分区!※※※
           EOF
