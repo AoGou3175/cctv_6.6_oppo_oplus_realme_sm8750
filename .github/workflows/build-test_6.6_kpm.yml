@@ -297,7 +297,7 @@ jobs:
                 echo "::warning::BakaSU_CI Release 暂不可用，使用 ReSukiSU_CI 管理器"
                 MANAGER_REPO="cctv18/ReSukiSU_CI"
               fi
-              MANAGER_ASSET_FILTER='endswith("-arm64-v8a-release.apk")'
+              MANAGER_ASSET_FILTER='startswith("BakaSU_") and endswith("-arm64-v8a-release.apk")'
               ;;
             sukisu)
               KSU_TYPENAME="SukiSU Ultra"

@@ -53,3 +53,16 @@
 - 验证：7 个父子接口、输出、版本/89_mtk 和唯一命名检查通过；163 段 Bash 经 bash -n 通过；git diff --check 通过；当前文件与 Git 历史敏感信息模式扫描通过；管理器回退逻辑实测可用，真实 APK 为 ReSukiSU_v4.2.0-rc3_35203-arm64-v8a-release.apk。
 - 坑点：不能只改显示名称而保留旧输入参数；新 CI 地址尚未提供 Release 时不能让内核汇总发布失败。长期规则已写入本仓库 AGENTS.md，不修改 6.1 项目。
 - GitHub 备份/构建状态：将随同步提交推送至已授权的公开 fork main；本轮 Actions 的真实构建和发布结果待补充。
+
+
+## 2026-10-11 20:01:02 本轮真实构建失败与管理器安全检查
+
+- 上游同步提交 0a3d8d52a25e6a40c94b73545c5e738c5d6923fb 已推送并核对远程 main；fork 相对上游为 ahead 5 / behind 0。
+- 新运行：https://github.com/AoGou3175/cctv_6.6_oppo_oplus_realme_sm8750/actions/runs/38137105017；七个 build job 均编译失败，七个子 Release 与汇总 Release 均跳过，没有发布本轮资产。
+- 根因证据：6.6.30 与 6.6.89_mtk 日志都在 KernelSU/kernel/tools/susfs_compat.mk:20 报 Please wait susfs update。BakaSU 提交 48fa4bb7ec8bddb8ea932a8c9be0877f89a1fa73（2026-10-10）主动增加 SUSFS 构建中止；Kbuild 仅在 CONFIG_KSU_SUSFS 模式包含此文件。禁止删除保护来伪造构建成功。
+- 管理器进一步核验：2026-10-05 提交 97c102ba05ee2915390cacae6d11e1727d6ca350 更改包名并移除旧管理器支持；旧 CI 最新 APK 是 10 月 4 日源码 8770c7e324a22895703c4916b8a16520e0b81c79 对应的 ReSukiSU_35203，不能当作最新 BakaSU 管理器使用。
+- 精准修复：批量发布的 BakaSU APK 筛选要求 BakaSU_ 前缀和 arm64-v8a-release.apk 后缀，不再静默附带旧管理器；AGENTS.md 增加上游保护及管理器兼容性规则。
+- 快照：versions/build-test_6.6_kpm-20261011-200102-manager-compat.yml、versions/AGENTS-20261011-200102-susfs-guard.md；本地外层 versions 同步保存。
+- 验证：修改前实测旧 CI 仅提供旧管理器；修改后实际运行工作流资产筛选，结果为空，正确拒绝不兼容 APK；源文件 git diff --check 通过。首次结果快照保留源文件原有空白，单独用 SHA-256 验证 20 个快照字节一致，不清理上游无关格式。
+- 当前需要用户选择：保留 SUSFS 并固定 10 月 4 日兼容源码（缺少后续更新）、最新 BakaSU 关闭 SUSFS并另配新版管理器，或等待 SUSFS 适配。未擅自改变 susfs 功能、删除上游保护或回退源码。
+- GitHub 备份状态：同步代码和首次快照已上传；本条构建失败记录、管理器安全检查和新快照随后提交推送 main。尚无本轮成功构建，不声明任务构建成功。
