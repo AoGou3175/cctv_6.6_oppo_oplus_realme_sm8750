@@ -125,3 +125,15 @@
 - D:/Codex/构建GKI/CCTV6.6/versions/validate_workflows-20261012-085239-release-tag-unique.py
 - git diff --check 与敏感信息模式扫描通过；没有删除或覆盖既有 Release、资产、标签、历史、旧运行或快照。
 - GitHub 备份状态：本轮代码、测试、AGENTS、快照与记录随后按用户要求上传已授权的公开 fork main；真实验证从最新 main 新建运行，参数沿用本次失败运行，结果完成后追加。旧运行补跑仍使用旧提交，不能作为新代码验证。
+
+
+## 2026-10-12 09:03:30 标签修复真实验证完成
+
+- 修复提交 fa9d5dc21f3d37f08b0fdd90925e641238528d37 已上传 main；git ls-remote 与 GitHub Contents API blob 回读一致。
+- 最新提交新运行 https://github.com/AoGou3175/cctv_6.6_oppo_oplus_realme_sm8750/actions/runs/38189836583：16 个 job 全部 success，6.6.57 发布和统一汇总正常；未重跑旧失败记录或删除旧产物。
+- 七个子 Release 标签均包含各自完整内核版本、38189836583、attempt 1 和时间，七个标签唯一。6.6.89_mtk 单独发布，没有与 6.6.89 合并。
+- 统一 Release：https://github.com/AoGou3175/cctv_6.6_oppo_oplus_realme_sm8750/releases/tag/OPPO-OPlus-Realme-build-all-261012090154-38189836583；七个 ZIP 和官方 BakaSU_v4.2.0-rc3_35226-arm64-v8a-release.apk 全部存在。
+- 七份源码 SHA 一致为 f6cb7e70c10ebde149f3121ae68b945514fd0801；参数保持 SUSFS false、KPM false、LZ4 true、AoGou 后缀及其余原设置。
+- 官方管理器来自同源码 main/push 成功运行 38152678560，SHA-256 dd2243e82ebf054cbb7434874abd5b568c965a857a6bfe4f628e4e0287388255；apksigner 验证通过，证书与本次 manager_sign.h 一致；没有使用上一提交 APK。
+- 资产下载至 D:/Personal/Temp/gki-final-38189836583，8 个文件大小和 SHA-256 与 GitHub digest 一致、CRC 全部通过；七 ZIP 包含 Image、anykernel.sh 和 tools/ak3-core.sh，ARM64 魔数及本次构建元数据有效；子 Release 和统一 Release 的相同 ZIP digest 一致。Release 中文和实际源码信息回读正常。
+- 9 个结果快照、7 工作流、测试和 AGENTS.md 已随 fa9d5dc 上传；本条最终验证记录正常提交推送 main，不对 CHANGELOG 递归创建快照。未新增构建故障，未修改手机或进行实机刷写/开机/Root 测试。
