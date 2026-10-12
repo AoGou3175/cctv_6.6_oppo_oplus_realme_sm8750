@@ -907,7 +907,7 @@ jobs:
           #### ※※※刷写内核有风险，为防止出现意外导致手机变砖，在刷入内核前请务必用[KernelFlasher](https://github.com/capntrips/KernelFlasher)等软件备份boot等关键启动分区!※※※
           EOF
 
-          gh release create "${{ env.TAG_HEAD }}-${{ env.TIME }}" \
+          gh release create "${{ env.TAG_HEAD }}-${{ env.KERNEL_VERSION }}.${{ env.SUB_VERSION }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ env.TIME }}" \
             --repo "${{ github.repository }}" \
             --title "${{ env.TAG_HEAD }}-${{ env.FULL_VERSION }}" \
             --notes-file release_notes.md \

@@ -105,3 +105,23 @@
 - 最终静态检查：七版本接口和唯一命名、165 段 Bash 语法通过，git diff --check 通过；Release 中文、标签、源码及资产回读正常。
 - 本轮工作流、测试、AGENTS.md 和 10 个结果快照已上传提交 49ccdd7；快照路径见上一条记录。本条仅补充验证结果，不对 CHANGELOG 自身生成递归快照；仓库内记录随后正常提交推送 main，本地外层记录同步保留。
 - 未进行手机刷写、开机或 Root/模块实机验证；未发现新的工作流构建故障，没有修改设备分区、仓库可见性或 fork 关系。
+
+
+## 2026-10-12 08:52:39 修复并行子 Release 标签撞名
+
+- 问题运行 38188659698：七个 build 成功，6.6.57 子 Release 报 HTTP 422 / Release.tag_name already exists，最终汇总跳过；七 ZIP 工件均保留。
+- 根因：6.6.50 与 6.6.57 在 08:43:23 同秒生成 OPPO-OPlus-Realme-build-261012084323，标签只包含秒级时间；6.6.50 先占用标签。不是 BakaSU、内核源码或 ZIP 命名问题。
+- 修改七个批量子工作流的一行 gh release create 标签表达式，加入完整 KERNEL_VERSION.SUB_VERSION、github.run_id、github.run_attempt，保留原时间、标题、说明及所有构建选项；不修改非本批次 6.6.118。
+- 验证器运行真实标签表达式，固定同一秒，覆盖七版本 × 两运行 × 三次尝试 = 42 个标签。修改前按预期失败，修改后全部唯一；七版本接口、唯一 ZIP 和 165 段 Bash 语法通过。
+- AGENTS.md 追加并行发布标签唯一性规则，tests/validate_workflows.py 加入回归验证。九个文件的结果快照如下；repo/versions 保存同名副本，快照与当前文件内容一致，工作流原 CRLF 保留且 SHA-256 字节一致。
+- D:/Codex/构建GKI/CCTV6.6/versions/fastbuild_6.6.30-20261012-085239-release-tag-unique.yml
+- D:/Codex/构建GKI/CCTV6.6/versions/fastbuild_6.6.50-20261012-085239-release-tag-unique.yml
+- D:/Codex/构建GKI/CCTV6.6/versions/fastbuild_6.6.56-20261012-085239-release-tag-unique.yml
+- D:/Codex/构建GKI/CCTV6.6/versions/fastbuild_6.6.57-20261012-085239-release-tag-unique.yml
+- D:/Codex/构建GKI/CCTV6.6/versions/fastbuild_6.6.66-20261012-085239-release-tag-unique.yml
+- D:/Codex/构建GKI/CCTV6.6/versions/fastbuild_6.6.89-20261012-085239-release-tag-unique.yml
+- D:/Codex/构建GKI/CCTV6.6/versions/fastbuild_6.6.89_mtk-20261012-085239-release-tag-unique.yml
+- D:/Codex/构建GKI/CCTV6.6/versions/AGENTS-20261012-085239-release-tag-unique.md
+- D:/Codex/构建GKI/CCTV6.6/versions/validate_workflows-20261012-085239-release-tag-unique.py
+- git diff --check 与敏感信息模式扫描通过；没有删除或覆盖既有 Release、资产、标签、历史、旧运行或快照。
+- GitHub 备份状态：本轮代码、测试、AGENTS、快照与记录随后按用户要求上传已授权的公开 fork main；真实验证从最新 main 新建运行，参数沿用本次失败运行，结果完成后追加。旧运行补跑仍使用旧提交，不能作为新代码验证。

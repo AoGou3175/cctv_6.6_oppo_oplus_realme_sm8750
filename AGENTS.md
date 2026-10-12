@@ -11,6 +11,7 @@
 - 下载跨仓库官方工件需要验证实际权限；若 GITHUB_TOKEN 无法取得 APK，保留官方下载来源并发布完整内核包，不附带不匹配 APK。本次交付由已授权的 gh 登录补充同提交官方 APK，并回读资产哈希。
 - 每个子工作流同时支持 workflow_dispatch 和 workflow_call。输入名称、类型与父入口一致，内部使用 inputs.xxx。
 - ZIP 名称必须含 KERNEL_VERSION.SUB_VERSION，确保 6.6.89 与 6.6.89_mtk 不重名。汇总 Release 等待全部成功，并校验七个 ZIP 后再发布；none 模式不要求 APK。
+- 并行子 Release 标签必须包含完整 KERNEL_VERSION.SUB_VERSION、github.run_id 和 github.run_attempt，不能只使用秒级时间；否则两个版本同秒创建会报 HTTP 422 / Release.tag_name already exists，并阻断汇总发布。验证器需覆盖同秒七版本、不同运行和重跑的标签唯一性。
 - 用户要求重新构建时优先沿用最近一次成功运行的实际参数，而非仅按工作流默认值；需要改变功能开关时明确说明。
 - 工作流修改后运行 `python tests/validate_workflows.py`（依赖 PyYAML、Git Bash 或 bash），检查父子接口、输出、版本、ZIP 命名和 Bash 语法，并执行 git diff --check。
 - 静态检查不等于构建成功。推送后核对远程 SHA 和关键工作流，再从最新 main 启动新运行，检查构建、工件校验及最终 Release 资产；不要用旧运行的重新运行代替新代码验证。
